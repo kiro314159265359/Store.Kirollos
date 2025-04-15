@@ -53,6 +53,7 @@ namespace Store.Kirollos.Api
 
             app.UseAuthorization();
 
+            app.UseStaticFiles();
 
             app.MapControllers();
 

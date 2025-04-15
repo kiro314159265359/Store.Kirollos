@@ -11,8 +11,8 @@ namespace Services.Abstractions
     {
         // when we get to the service area we use dtos
         // Get All Product
-        Task<IEnumerable<ProductResultDto>> GetAllProductAsync();
-
+        //Task<IEnumerable<ProductResultDto>> GetAllProductAsync(int? brandId, int? typeId, string? sort, int pageIndex = 1, int pageSize = 5);
+        Task<PaginationResponse<ProductResultDto>> GetAllProductAsync(ProductSpecificationParamters specParams);
         // Get Product by Id
         Task<ProductResultDto?> GetProductByIdAsync(int id);
 
