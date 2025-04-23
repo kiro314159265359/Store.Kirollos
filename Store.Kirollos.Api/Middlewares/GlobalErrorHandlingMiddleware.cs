@@ -50,6 +50,8 @@ namespace Store.Kirollos.Api.Middlewares
             {
                 NotFoundExecption => StatusCodes.Status404NotFound,
                 BadRequestExecption => StatusCodes.Status400BadRequest,
+                UnAuthorizedExecption => StatusCodes.Status401Unauthorized,
+                ValidationExecption => HandlingValidationExecptionAsync((ValidationExecption)e, response),
                 _ => StatusCodes.Status500InternalServerError,
             };
 
@@ -68,6 +70,13 @@ namespace Store.Kirollos.Api.Middlewares
                 ErrorMessage = $"End Point {context.Request.Path} is Not Found"
             };
             await context.Response.WriteAsJsonAsync(response);
+        }
+
+        private static int HandlingValidationExecptionAsync(ValidationExecption ex , ErrorDetails response)
+        {
+            response.Errors = ex.Errors;
+
+            return StatusCodes.Status400BadRequest;
         }
     }
 }

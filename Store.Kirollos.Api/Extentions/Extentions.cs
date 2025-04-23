@@ -1,6 +1,9 @@
 ﻿using Domain.Contracts;
+using Domain.Models.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Persistence;
+using Persistence.Identity;
 using Services;
 using Shared.ErrorModels;
 using Store.Kirollos.Api.Middlewares;
@@ -16,6 +19,7 @@ namespace Store.Kirollos.Api.Extentions
             services.AddSwaggerServices();
 
             services.AddInfrastructureServices(configuration);
+            services.AddIdentityServices();
             services.AddApplicationServices();
 
             services.ConfigureServices();
@@ -27,6 +31,13 @@ namespace Store.Kirollos.Api.Extentions
         {
             services.AddControllers();
 
+            return services;
+        }
+
+        private static IServiceCollection AddIdentityServices(this IServiceCollection services)
+        {
+            services.AddIdentity<AppUser, IdentityRole>()
+                    .AddEntityFrameworkStores<StoreIdentityDbContext>();
             return services;
         }
 
@@ -62,7 +73,7 @@ namespace Store.Kirollos.Api.Extentions
             return services;
         }
 
-        public static async Task<WebApplication> ConfigureMiddlewares(this WebApplication app) 
+        public static async Task<WebApplication> ConfigureMiddlewares(this WebApplication app)
         {
             await app.InitializeDatabaseAsync();
 
@@ -91,6 +102,7 @@ namespace Store.Kirollos.Api.Extentions
             using var scope = app.Services.CreateScope();
             var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
             await dbInitializer.InitializeAsync();
+            await dbInitializer.InitializeIdentityAsync();
 
             return app;
 
