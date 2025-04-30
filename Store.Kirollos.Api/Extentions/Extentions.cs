@@ -1,5 +1,6 @@
 ﻿using Domain.Contracts;
 using Domain.Models.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Persistence;
@@ -7,6 +8,11 @@ using Persistence.Identity;
 using Services;
 using Shared.ErrorModels;
 using Store.Kirollos.Api.Middlewares;
+using Microsoft.IdentityModel.Tokens;
+using Shared;
+using Microsoft.Extensions.DependencyInjection;
+using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace Store.Kirollos.Api.Extentions
 {
@@ -17,13 +23,39 @@ namespace Store.Kirollos.Api.Extentions
             services.AddBuiltInServices();
 
             services.AddSwaggerServices();
+            services.ConfigureServices();
 
             services.AddInfrastructureServices(configuration);
             services.AddIdentityServices();
-            services.AddApplicationServices();
+            services.AddApplicationServices(configuration);
+            services.ConfigureJwtServices(configuration);
 
-            services.ConfigureServices();
 
+            return services;
+        }
+
+        private static IServiceCollection ConfigureJwtServices(this IServiceCollection services , IConfiguration configuration)
+        {
+            var jwtOptions = configuration.GetSection("JwtOptions").Get<JwtOptions>();
+
+            services.AddAuthentication(o =>
+            {
+                o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(o =>
+            {
+                o.TokenValidationParameters = new TokenValidationParameters()
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidAudience = jwtOptions.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SecretKey)),
+                };
+            });
             return services;
         }
 
@@ -87,6 +119,8 @@ namespace Store.Kirollos.Api.Extentions
             }
 
             app.UseHttpsRedirection();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 
