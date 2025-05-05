@@ -49,16 +49,22 @@ namespace Services
             var subTotal = orderItems.Sum(i => i.Price * i.Quantity);
 
             // 5. Payment Intent ID..
+            // check order exists or not
+            var spec = new OrderWithPaymentIntentSpecifications(basket.PaymentIntentId);
+            var existOrder = await unitOfWork.GetRepository<Order, Guid>().GetAsync(spec);
+
+            if (existOrder is not null)
+                unitOfWork.GetRepository<Order, Guid>().Delete(existOrder);
 
             // Create Order
-            var order = new Order(userEmail, address, orderItems, deliveryMethod, subTotal, "");
+            var order = new Order(userEmail, address, orderItems, deliveryMethod, subTotal, basket.PaymentIntentId);
             await unitOfWork.GetRepository<Order, Guid>().AddAsync(order);
             var count = await unitOfWork.SaveChangeAsync();
 
             if (count == 0)
                 throw new OrderCreateBadRequestException();
 
-            var result =  mapper.Map<OrderResultDto>(order);
+            var result = mapper.Map<OrderResultDto>(order);
             return result;
         }
 
@@ -74,7 +80,7 @@ namespace Services
         {
             var spec = new OrderSpecifications(id);
 
-            var order = await unitOfWork.GetRepository<Order , Guid>().GetAsync(spec);
+            var order = await unitOfWork.GetRepository<Order, Guid>().GetAsync(spec);
             if (order is null)
                 throw new OrderNotFoundExecption(id);
 

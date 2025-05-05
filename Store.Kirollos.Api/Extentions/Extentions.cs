@@ -30,6 +30,15 @@ namespace Store.Kirollos.Api.Extentions
             services.AddApplicationServices(configuration);
             services.ConfigureJwtServices(configuration);
 
+            services.AddCors(config =>
+            {
+                config.AddPolicy("MyPolicy", options =>
+                {
+                    options.AllowAnyHeader();
+                    options.AllowAnyMethod();
+                    options.WithOrigins("http://localhost:4200");
+                });
+            });
 
             return services;
         }
@@ -121,6 +130,8 @@ namespace Store.Kirollos.Api.Extentions
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
+
+            app.UseCors("MyPolicy");
 
             app.UseAuthorization();
 

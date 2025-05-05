@@ -14,10 +14,17 @@ using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Shared.OrderModels;
+using Microsoft.EntityFrameworkCore;
+using AutoMapper;
 
 namespace Services
 {
-    public class AuthService(UserManager<AppUser> _userManager, IOptions<JwtOptions> options) : IAuthService
+    public class AuthService(
+        UserManager<AppUser> _userManager,
+        IOptions<JwtOptions> options,
+        IMapper mapper) :
+        IAuthService
     {
         public async Task<UserResultDto> LoginAsync(LoginDto loginDto)
         {
@@ -47,9 +54,8 @@ namespace Services
                 PhoneNumber = registerDto.PhoneNumber,
             };
 
-            var Email = await _userManager.GetEmailAsync(user);
-            if (Email is not null)
-                throw new Exception("Email Already Exist");
+            if (await CheckEmailExistsAsync(registerDto.Email))
+                throw new DuplicatedEmailBadRequestExecption(registerDto.Email);
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
             if (!result.Succeeded)
@@ -64,6 +70,63 @@ namespace Services
                 Email = user.Email,
                 Token = await GenerateJwtTokenAsync(user)
             };
+        }
+
+        public async Task<bool> CheckEmailExistsAsync(string email)
+        {
+            return await _userManager.FindByEmailAsync(email) != null ? true : false;
+        }
+
+        public async Task<UserResultDto> GetCurrentUserAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user is null)
+                throw new UserNotFoundExecption(email);
+
+            return new UserResultDto()
+            {
+                DisplayName = user.DisplayName,
+                Email = user.Email,
+                Token = await GenerateJwtTokenAsync(user)
+            };
+        }
+
+        public async Task<AddressDto> GetCurrentUserAddressAsync(string email)
+        {
+            var user = await _userManager.Users
+                             .Include(u => u.Address)
+                             .FirstOrDefaultAsync(u => u.Email == email);
+            if (user is null)
+                throw new UserNotFoundExecption(email);
+
+            var result = mapper.Map<AddressDto>(user.Address);
+
+            return result;
+        }
+
+        public async Task<AddressDto> UpdateCurrentUserAddressAsync(AddressDto address, string email)
+        {
+            var user = await _userManager.Users
+                                .Include(u => u.Address)
+                                .FirstOrDefaultAsync(u => u.Email == email);
+            if (user is null)
+                throw new UserNotFoundExecption(email);
+
+            if (user.Address is not null)
+            {
+                user.Address.FirstName = address.FirstName;
+                user.Address.LastName = address.LastName;
+                user.Address.Street = address.Street;
+                user.Address.City = address.City;
+                user.Address.Country = address.Country;
+            }
+            else
+            {
+                var addressResult = mapper.Map<Address>(address);
+                user.Address = addressResult;
+            }
+            await _userManager.UpdateAsync(user);
+            return address;
         }
 
         private async Task<string> GenerateJwtTokenAsync(AppUser user)
